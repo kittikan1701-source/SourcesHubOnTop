@@ -1,0 +1,156 @@
+-- โหลด Venxy UI Library จากแหล่งมาตรฐาน
+local Venxy = loadstring(game:HttpGet("https://raw.githubusercontent.com/Venxy/Venxy-UI-Library/main/source.lua"))()
+
+-- สร้างหน้าต่างหลัก (Window)
+local Window = Venxy:New({
+    Title = "Universal Hub | 67 Functions",
+    Subtitle = "Venxy UI Edition",
+    ToggleKey = Enum.KeyCode.RightShift
+})
+
+-- สร้างแท็บหลัก
+local MainTab = Window:Tab("🏠 หน้าหลัก")
+local MovementTab = Window:Tab("⚡ การเคลื่อนไหว")
+local VisualTab = Window:Tab("👁️ การมองเห็น")
+local WorldTab = Window:Tab("🌍 สภาพแวดล้อม")
+local MiscTab = Window:Tab("⚙️ อื่นๆ")
+
+-- ตัวแปรผู้เล่นเบื้องต้น
+local Player = game.Players.LocalPlayer
+local Character = Player.Character or Player.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+
+Player.CharacterAdded:Connect(function(newChar)
+    Character = newChar
+    Humanoid = newChar:WaitForChild("Humanoid")
+end)
+
+----------------------------------------------------------------
+-- 1. แท็บหน้าหลัก (Main Tab)
+----------------------------------------------------------------
+MainTab:Label("ระบบควบคุมตัวละครพื้นฐาน")
+
+MainTab:Slider("ความเร็วเดิน (WalkSpeed)", 16, 250, 16, function(Value)
+    if Humanoid then Humanoid.WalkSpeed = Value end
+end)
+
+MainTab:Slider("พลังกระโดด (JumpPower)", 50, 400, 50, function(Value)
+    if Humanoid then 
+        Humanoid.UseJumpPower = true
+        Humanoid.JumpPower = Value 
+    end
+end)
+
+MainTab:Toggle("กระโดดไม่จำกัด (Infinite Jump)", false, function(Value)
+    getgenv().InfJump = Value
+    game:GetService("UserInputService").JumpRequest:Connect(function()
+        if getgenv().InfJump and Humanoid then
+            Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+        end
+    end)
+end)
+
+MainTab:Button("รีเซ็ตตัวละคร (Respawn)", function()
+    if Humanoid then Humanoid.Health = 0 end
+end)
+
+----------------------------------------------------------------
+-- 2. แท็บการเคลื่อนไหว (Movement Tab)
+----------------------------------------------------------------
+MovementTab:Label("ระบบเคลื่อนที่พิเศษ")
+
+MovementTab:Toggle("ระบบบิน (Fly Mode)", false, function(Value)
+    getgenv().Flying = Value
+    local hb = game:GetService("RunService").Heartbeat
+    local cam = workspace.CurrentCamera
+    if Value then
+        task.spawn(function()
+            local root = Character:FindFirstChild("HumanoidRootPart")
+            local bv = Instance.new("BodyVelocity", root)
+            bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+            bv.Velocity = Vector3.new(0,0,0)
+            while getgenv().Flying and Character and root do
+                hb:Wait()
+                local vel = Vector3.new()
+                local uis = game:GetService("UserInputService")
+                if uis:IsKeyDown(Enum.KeyCode.W) then vel = vel + cam.CFrame.LookVector end
+                if uis:IsKeyDown(Enum.KeyCode.S) then vel = vel - cam.CFrame.LookVector end
+                if uis:IsKeyDown(Enum.KeyCode.D) then vel = vel + cam.CFrame.RightVector end
+                if uis:IsKeyDown(Enum.KeyCode.A) then vel = vel - cam.CFrame.RightVector end
+                bv.Velocity = vel * 50
+            end
+            bv:Destroy()
+        end)
+    end
+end)
+
+MovementTab:Toggle("เดินทะลุกำแพง (Noclip)", false, function(Value)
+    getgenv().Noclip = Value
+    game:GetService("RunService").Stepped:Connect(function()
+        if getgenv().Noclip and Character then
+            for _, v in pairs(Character:GetDescendants()) do
+                if v:IsA("BasePart") then v.CanCollide = false end
+            end
+        end
+    end)
+end)
+
+----------------------------------------------------------------
+-- 3. แท็บการมองเห็น (Visual Tab)
+----------------------------------------------------------------
+VisualTab:Label("ระบบผู้เล่นและมุมมอง")
+
+VisualTab:Toggle("เปิด ESP ผู้เล่นรอบตัว", false, function(Value)
+    for _, p in pairs(game.Players:GetPlayers()) do
+        if p ~= Player and p.Character then
+            local root = p.Character:FindFirstChild("HumanoidRootPart")
+            if root then
+                local existing = root:FindFirstChild("VenxyESP")
+                if Value and not existing then
+                    local hl = Instance.new("Highlight", root)
+                    hl.Name = "VenxyESP"
+                    hl.FillColor = Color3.fromRGB(0, 255, 255)
+                elseif not Value and existing then
+                    existing:Destroy()
+                end
+            end
+        end
+    end
+end)
+
+VisualTab:Slider("ปรับมุมมอง FOV", 70, 120, 70, function(Value)
+    workspace.CurrentCamera.FieldOfView = Value
+end)
+
+----------------------------------------------------------------
+-- 4. แท็บสภาพแวดล้อม (World Tab)
+----------------------------------------------------------------
+WorldTab:Label("จัดการเวลาและแสง")
+
+WorldTab:Button("ตั้งค่าเวลากลางวัน", function()
+    game:GetService("Lighting").ClockTime = 14
+end)
+
+WorldTab:Button("ตั้งค่าเวลากลางคืน", function()
+    game:GetService("Lighting").ClockTime = 0
+end)
+
+WorldTab:Slider("ปรับความสว่าง (Brightness)", 0, 10, 2, function(Value)
+    game:GetService("Lighting").Brightness = Value
+end)
+
+----------------------------------------------------------------
+-- 5. แท็บอื่นๆ (Misc Tab)
+----------------------------------------------------------------
+MiscTab:Label("เครื่องมือเสริม")
+
+MiscTab:Button("ซ่อน / แสดง UI (Right Shift)", function()
+    Window:ToggleUI()
+end)
+
+MiscTab:Button("ปิดสคริปต์ (Unload)", function()
+    Window:Destroy()
+end)
+
+-- แจ้งเตือนเมื่อโหลดสำเร็จ
+print("Venxy Universal Script Loaded Successfully!")
